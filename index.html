@@ -603,6 +603,116 @@ html, body {
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* ── API KEY SCREEN ── */
+.key-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  text-align: center;
+}
+.key-screen.hidden { display: none; }
+.key-logo {
+  font-family: var(--mono);
+  font-size: 28px;
+  letter-spacing: 6px;
+  color: var(--green);
+  text-shadow: 0 0 30px var(--green-glow);
+  margin-bottom: 8px;
+}
+.key-logo em { color: var(--text-dimmer); font-style: normal; }
+.key-subtitle {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--text-dimmer);
+  margin-bottom: 40px;
+}
+.key-box {
+  width: 100%;
+  max-width: 360px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  padding: 24px 20px;
+}
+.key-box-title {
+  font-family: var(--cond);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.key-box-desc {
+  font-family: var(--body);
+  font-size: 13px;
+  color: var(--text-dimmer);
+  line-height: 1.5;
+  margin-bottom: 20px;
+  font-weight: 300;
+}
+.key-input-wrap { position: relative; margin-bottom: 12px; }
+.key-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 12px 44px 12px 14px;
+  letter-spacing: 1px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.key-input:focus { border-color: var(--green); }
+.key-input::placeholder { color: var(--text-dimmer); }
+.key-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-dimmer);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+}
+.key-save-btn {
+  width: 100%;
+  background: var(--green-dim);
+  border: 1px solid var(--green);
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 3px;
+  padding: 13px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+.key-save-btn:active { background: rgba(0,232,122,0.25); }
+.key-link {
+  margin-top: 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dimmer);
+  letter-spacing: 1px;
+}
+.key-link a { color: var(--blue); text-decoration: none; }
+.key-error {
+  margin-top: 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--red);
+  letter-spacing: 1px;
+  min-height: 16px;
+}
+
 /* ── LOG MODAL ── */
 .modal-overlay {
   position: fixed;
@@ -670,6 +780,23 @@ html, body {
 </style>
 </head>
 <body>
+
+<!-- API KEY SETUP SCREEN -->
+<div class="key-screen hidden" id="keyScreen">
+  <div class="key-logo">FX<em>/</em>INTEL</div>
+  <div class="key-subtitle">PERSONAL FOREX SIGNAL TERMINAL</div>
+  <div class="key-box">
+    <div class="key-box-title">Enter API Key</div>
+    <div class="key-box-desc">You need an Anthropic API key to power the AI signals. Get one free at console.anthropic.com — new accounts include free credits.</div>
+    <div class="key-input-wrap">
+      <input class="key-input" type="password" id="keyInput" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+      <button class="key-toggle" onclick="toggleKeyVisibility()" id="keyToggleBtn">👁</button>
+    </div>
+    <button class="key-save-btn" onclick="saveApiKey()">SAVE & LAUNCH</button>
+    <div class="key-error" id="keyError"></div>
+  </div>
+  <div class="key-link">Get your key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></div>
+</div>
 
 <div class="app">
 
@@ -818,6 +945,16 @@ html, body {
           </div>
         </div>
         <div class="setting-group">
+          <div class="setting-group-title">API</div>
+          <div class="setting-row" onclick="showKeyScreen()" style="cursor:pointer">
+            <div class="setting-info">
+              <div class="setting-name">API Key</div>
+              <div class="setting-desc">Tap to update your Anthropic API key</div>
+            </div>
+            <div class="setting-val" id="keyStatus">SET ✓</div>
+          </div>
+        </div>
+        <div class="setting-group">
           <div class="setting-group-title">RISK REMINDER</div>
           <div class="setting-row">
             <div class="setting-info">
@@ -862,7 +999,40 @@ let autoMode = false;
 let autoTimer = null;
 let pendingLog = null;
 let selectedOutcome = null;
-let checks = {}; // per card check states
+let checks = {};
+
+// ── API KEY ──
+function getApiKey() { return localStorage.getItem('fxintel-apikey') || ''; }
+
+function saveApiKey() {
+  const val = document.getElementById('keyInput').value.trim();
+  const err = document.getElementById('keyError');
+  if (!val.startsWith('sk-ant-')) {
+    err.textContent = 'KEY MUST START WITH sk-ant-';
+    return;
+  }
+  localStorage.setItem('fxintel-apikey', val);
+  document.getElementById('keyScreen').classList.add('hidden');
+  document.getElementById('keyStatus').textContent = 'SET ✓';
+  showToast('API KEY SAVED ✓');
+}
+
+function showKeyScreen() {
+  const screen = document.getElementById('keyScreen');
+  screen.classList.remove('hidden');
+  const existing = getApiKey();
+  if (existing) {
+    document.getElementById('keyInput').value = existing;
+  }
+  document.getElementById('keyError').textContent = '';
+}
+
+function toggleKeyVisibility() {
+  const input = document.getElementById('keyInput');
+  const btn = document.getElementById('keyToggleBtn');
+  if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
+  else { input.type = 'password'; btn.textContent = '👁'; }
+}
 
 // ── NAV ──
 function switchTab(name) {
@@ -894,6 +1064,9 @@ function toggleAuto() {
 
 // ── FETCH SIGNALS ──
 async function fetchSignals() {
+  const apiKey = getApiKey();
+  if (!apiKey) { showKeyScreen(); return; }
+
   const btn = document.getElementById('scanBtn');
   const list = document.getElementById('signalsList');
   const dot = document.getElementById('liveDot');
@@ -921,7 +1094,12 @@ async function fetchSignals() {
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 1000,
@@ -1246,6 +1424,11 @@ if ('serviceWorker' in navigator) {
 
 // ── INIT ──
 renderJournal();
+if (!getApiKey()) {
+  showKeyScreen();
+} else {
+  document.getElementById('keyStatus').textContent = 'SET ✓';
+}
 </script>
 </body>
 </html>
